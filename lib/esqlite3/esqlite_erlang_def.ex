@@ -14,7 +14,10 @@ defmodule :esqlite3 do
   defdelegate open(filename), to: Esqlite3
 
   @doc docs[{:open, 2}]
-  defdelegate open(filename, timeout), to: Esqlite3
+  defdelegate open(filename, flags), to: Esqlite3
+
+  @doc docs[{:open, 3}]
+  defdelegate open(filename, flags, timeout), to: Esqlite3
 
   @doc docs[{:exec, 2}]
   defdelegate exec(sql, connection), to: Esqlite3
@@ -69,6 +72,12 @@ defmodule :esqlite3 do
 
   @doc docs[{:column_types, 2}]
   defdelegate column_types(statement, timeout), to: Esqlite3
+
+  @doc docs[{:enable_load_extension, 1}]
+  defdelegate enable_load_extension(connection), to: Esqlite3
+
+  @doc docs[{:enable_load_extension, 2}]
+  defdelegate enable_load_extension(connection, timeout), to: Esqlite3
 
   @doc docs[{:close, 1}]
   defdelegate close(connection), to: Esqlite3
