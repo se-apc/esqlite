@@ -3,7 +3,7 @@ defmodule Sqlite.MixProject do
 
   def project do
     [
-      app: :sqlite,
+      app: :esqlite,
       version: "1.1.0",
       elixir: "~> 1.4",
       compilers: [:elixir_make] ++ Mix.compilers(),
