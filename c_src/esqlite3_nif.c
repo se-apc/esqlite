@@ -1296,5 +1296,5 @@ static ErlNifFunc nif_funcs[] = {
     {"close", 3, esqlite_close}
 };
 
-/*ERL_NIF_INIT(esqlite3_nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);*/
-ERL_NIF_INIT(Elixir.Esqlite3Nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);
+ERL_NIF_INIT(esqlite3_nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);
+//ERL_NIF_INIT(Elixir.Esqlite3Nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);
