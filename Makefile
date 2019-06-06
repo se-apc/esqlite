@@ -57,7 +57,7 @@ endif
 
 OBJ = $(SRC:.c=.o)
 
-NIF=priv/sqlite3_nif.so
+NIF=priv/esqlite3_nif.so
 
 all: priv $(NIF)
 
