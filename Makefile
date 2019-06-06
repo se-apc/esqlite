@@ -5,6 +5,23 @@ REBAR3 := $(shell which rebar3 2>/dev/null || echo ./rebar3)
 REBAR3_VERSION := 3.10.0
 REBAR3_URL := https://github.com/erlang/rebar3/releases/download/$(REBAR3_VERSION)/rebar3
 
+ifeq ($(ERL_EI_INCLUDE_DIR),)
+$(error ERL_EI_INCLUDE_DIR not set. Invoke via mix)
+endif
+
+ifeq ($(ERL_EI_LIBDIR),)
+$(error ERL_EI_LIBDIR not set. Invoke via mix)
+endif
+
+
+# Set Erlang-specific compile and linker flags
+ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
+ERL_LDFLAGS ?= -L$(ERL_EI_LIBDIR) -lei
+
+SRC = $(wildcard c_src/*.c)
+
+LDFLAGS ?= -fPIC -shared -pedantic
+
 CFLAGS ?= -fPIC -O2
 SQLITE_CFLAGS  = -DSQLITE_ENABLE_COLUMN_METADATA
 SQLITE_CFLAGS += -DSQLITE_THREADSAFE=2
@@ -38,7 +55,20 @@ else
 	CFLAGS += $(SQLITE_CFLAGS) -fPIC -Ic_src/sqlite3
 endif
 
-all: compile
+OBJ = $(SRC:.c=.o)
+
+NIF=priv/sqlite3_nif.so
+
+all: priv $(NIF)
+
+priv:
+	mkdir -p priv
+
+%.o: %.c
+	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
+
+$(NIF): $(OBJ)
+$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 
 ./rebar3:
 	wget $(REBAR3_URL)
@@ -65,4 +95,5 @@ build-plt:
 dialyze:
 	@$(DIALYZER) --src src --plt .$(PROJECT).plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
+
 
