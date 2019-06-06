@@ -6,7 +6,6 @@ REBAR3_VERSION := 3.10.0
 REBAR3_URL := https://github.com/erlang/rebar3/releases/download/$(REBAR3_VERSION)/rebar3
 
 CFLAGS ?= -fPIC -O2
-$(REBAR) clean
 SQLITE_CFLAGS  = -DSQLITE_ENABLE_COLUMN_METADATA
 SQLITE_CFLAGS += -DSQLITE_THREADSAFE=2
 #WAL_SYNCHRONOUS sets PRAGMA_synchronous to EXTRA (FULL +1) for maximum data-base's safety following the power loss.
