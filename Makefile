@@ -68,7 +68,11 @@ priv:
 	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
 
 $(NIF): $(OBJ)
-$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+
+clean:
+	$(RM) $(NIF)
+	$(RM) $(OBJ)
 
 ./rebar3:
 	wget $(REBAR3_URL)
@@ -80,8 +84,6 @@ compile: rebar3
 test: compile
 	$(REBAR3) eunit
 
-clean: rebar3
-	$(REBAR3) clean
 
 distclean:
 	rm $(REBAR3)
