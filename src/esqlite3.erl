@@ -70,6 +70,7 @@ open(Filename, Timeout) ->
         ok ->
             {ok, {connection, make_ref(), Connection}};
         {error, _Msg}=Error ->
+            erlang:display({"sqlite3.erl: open Error: ", Error}),
             Error
     end.
 
@@ -448,18 +449,23 @@ close({connection, _Ref, Connection}, Timeout) ->
 
 %% Internal functions
 
+new_timeout(infinity) ->
+   infinity;
+new_timeout(Timeout) when is_integer(Timeout), Timeout >= 0 ->
+   Start = os:timestamp(),
+   PassedMics = timer:now_diff(os:timestamp(), Start) div 1000,
+   case Timeout - PassedMics of
+     Passed when Passed < 0 -> 0;
+     TO -> TO
+   end.
+
 receive_answer(Ref, Timeout) ->
-    Start = os:timestamp(),
     receive
         {esqlite3, Ref, Resp} ->
             Resp;
         {esqlite3, _, _}=StaleAnswer ->
             error_logger:warning_msg("Esqlite3: Ignoring stale answer ~p~n", [StaleAnswer]),
-            PassedMics = timer:now_diff(os:timestamp(), Start) div 1000,
-            NewTimeout = case Timeout - PassedMics of
-                             Passed when Passed < 0 -> 0;
-                             TO -> TO
-                         end,
+            NewTimeout = new_timeout(Timeout),
             receive_answer(Ref, NewTimeout)
     after Timeout ->
             throw({error, timeout, Ref})
