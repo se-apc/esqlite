@@ -5,7 +5,6 @@
 -module(esqlite_test).
 
 -include_lib("eunit/include/eunit.hrl").
--dialyzer([{nowarn_function, bind_test/0}, unknown]).
 
 open_single_database_test() ->
     {ok, _C1} = esqlite3:open("test.db"),
@@ -19,6 +18,29 @@ open_multiple_same_databases_test() ->
 open_multiple_different_databases_test() ->
     {ok, _C1} = esqlite3:open("test1.db"),
     {ok, _C2} = esqlite3:open("test2.db"),
+    ok.
+
+get_autocommit_test() ->
+    {ok, Db} = esqlite3:open(":memory:"),
+    ok = esqlite3:exec("CREATE TABLE test (id INTEGER PRIMARY KEY, val STRING);", Db),
+    true = esqlite3:get_autocommit(Db),
+    ok = esqlite3:exec("BEGIN;", Db),
+    false = esqlite3:get_autocommit(Db),
+    ok = esqlite3:exec("INSERT INTO test (val) VALUES ('this is a test');", Db),
+    ok = esqlite3:exec("COMMIT;", Db),
+    true = esqlite3:get_autocommit(Db),
+    ok.
+
+update_hook_test() ->
+    {ok, Db} = esqlite3:open(":memory:"),
+    ok = esqlite3:set_update_hook(self(), Db),
+    ok = esqlite3:exec("CREATE TABLE test (id INTEGER PRIMARY KEY, val STRING);", Db),
+    ok = esqlite3:exec("INSERT INTO test (val) VALUES ('this is a test');", Db),
+    ok = receive {insert, "test", 1} -> ok after 150 -> no_message end,
+    ok = esqlite3:exec("UPDATE test SET val = 'a new test' WHERE id = 1;", Db),
+    ok = receive {update, "test", 1} -> ok after 150 -> no_message end,
+    ok = esqlite3:exec("DELETE FROM test WHERE id = 1;", Db),
+    ok = receive {delete, "test", 1} -> ok after 150 -> no_message end,
     ok.
 
 simple_query_test() ->
@@ -44,8 +66,8 @@ simple_query_test() ->
 
 prepare_test() ->
     {ok, Db} = esqlite3:open(":memory:"),
-    ok = esqlite3:exec("begin;", Db),
-    ok = esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
+    esqlite3:exec("begin;", Db),
+    esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
     {ok, Statement} = esqlite3:prepare("insert into test_table values(\"one\", 2)", Db),
 
     '$done' = esqlite3:step(Statement),
@@ -55,8 +77,8 @@ prepare_test() ->
 
     %% Check if the values are there.
     [{<<"one">>, 2}, {<<"hello4">>, 13}] = esqlite3:q("select * from test_table order by two", Db),
-    ok = esqlite3:exec("commit;", Db),
-    ok = esqlite3:close(Db),
+    esqlite3:exec("commit;", Db),
+    esqlite3:close(Db),
 
     ok.
 
@@ -80,8 +102,6 @@ bind_test() ->
     esqlite3:bind(Statement, [<<"nine">>, 10]), % iolist bound as text
     esqlite3:step(Statement),
     esqlite3:bind(Statement, [{blob, [<<"eleven">>, 0]}, 12]), % iolist bound as blob with trailing eos.
-    esqlite3:step(Statement),
-    esqlite3:bind(Statement, ["empty", undefined]), % 'undefined' is converted to SQL null
     esqlite3:step(Statement),
 
     %% int64
@@ -109,8 +129,7 @@ bind_test() ->
         esqlite3:q("select one, two from test_table where two = 10", Db)),
     ?assertEqual([{{blob, <<$e,$l,$e,$v,$e,$n,0>>}, 12}],
         esqlite3:q("select one, two from test_table where two = 12", Db)),
-    ?assertEqual([{<<"empty">>, undefined}],
-        esqlite3:q("select one, two from test_table where two is null", Db)),
+
     ?assertEqual([{<<"int64">>, 308553449069486081}],
         esqlite3:q("select one, two from test_table where one = 'int64';", Db)),
     ?assertEqual([{<<"negative_int64">>, -308553449069486081}],
@@ -137,8 +156,7 @@ bind_for_queries_test() ->
                 [<<"test_table">>], Db)),
     ?assertEqual([{1}], esqlite3:q(<<"SELECT count(type) FROM sqlite_master WHERE type='table' AND name=?;">>,
                 [[<<"test_table">>]], Db)),
-    ?assertEqual({row, {1}}, esqlite3:exec(<<"SELECT count(type) FROM sqlite_master WHERE type='table' AND name=?;">>,
-                [[<<"test_table">>]], Db)),
+
     ok.
 
 column_names_test() ->
@@ -260,7 +278,10 @@ foreach_test() ->
 
     F = fun(Row) ->
 		case Row of
-		    {Key, Value} -> put(Key, Value)
+		    {Key, Value} ->
+			put(Key, Value);
+		    _ ->
+			ok
 		end
 	end,
 
@@ -299,17 +320,6 @@ map_test() ->
      [{one,<<"hello4">>},{two,13}]]  = esqlite3:map(Assoc, "select * from test_table", Db),
 
     ok.
-
-enable_load_extension_test() ->
-    {ok, Db} = esqlite3:open(":memory:"),
-    ?assertEqual(ok, esqlite3:enable_load_extension(Db)),
-    ok.
-
-extension_use_test() ->
-    {ok, Db} = esqlite3:open(":memory:"),
-    ok = esqlite3:exec("create virtual table test_table using fts3(content text);", Db),
-    ok.
-
 
 error1_msg_test() ->
     {ok, Db} = esqlite3:open(":memory:"),
@@ -350,14 +360,14 @@ sqlite_version_test() ->
     {ok, Db} = esqlite3:open(":memory:"),
     {ok, Stmt} = esqlite3:prepare("select sqlite_version() as sqlite_version;", Db),
     {sqlite_version} =  esqlite3:column_names(Stmt),
-    ?assertEqual({row, {<<"3.18.0">>}}, esqlite3:step(Stmt)),
+    ?assertEqual({row, {<<"3.27.2">>}}, esqlite3:step(Stmt)),
     ok.
 
 sqlite_source_id_test() ->
     {ok, Db} = esqlite3:open(":memory:"),
     {ok, Stmt} = esqlite3:prepare("select sqlite_source_id() as sqlite_source_id;", Db),
     {sqlite_source_id} =  esqlite3:column_names(Stmt),
-    ?assertEqual({row, {<<"2017-03-28 18:48:43 424a0d380332858ee55bdebc4af3789f74e70a2b3ba1cf29d84b9b4bcf3e2e37">>}}, esqlite3:step(Stmt)),
+    ?assertEqual({row, {<<"2019-02-25 16:06:06 bd49a8271d650fa89e446b42e513b595a717b9212c91dd384aab871fc1d0f6d7">>}}, esqlite3:step(Stmt)),
     ok.
 
 garbage_collect_test() ->
@@ -378,25 +388,5 @@ garbage_collect_test() ->
 
     ok.
 
-insert_test() ->
-  {ok, Db} = esqlite3:open(":memory:"),
-  ok = esqlite3:exec("begin", Db),
-  ok = esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
-  ?assertEqual({ok, 1}, esqlite3:insert(["insert into test_table values(", "\"hello1\"", ",", "10);"], Db)),
-  ?assertEqual({ok, 2}, esqlite3:insert(["insert into test_table values(", "\"hello2\"", ",", "100);"], Db)),
-  ok = esqlite3:exec("commit;", Db),
-  ok.
 
-prepare_error_test() ->
-  {ok, Db} = esqlite3:open(":memory:"),
-  esqlite3:exec("begin;", Db),
-  esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
 
-  ?assertEqual(
-    {error, {sqlite_error, "near \"insurt\": syntax error"}},
-      esqlite3:prepare("insurt into test_table values(\"one\", 2)", Db)),
-
-  ?assertException(throw, {error, {sqlite_error, _}}, esqlite3:q("selectt * from test_table order by two", Db)),
-  ?assertException(throw, {error, {sqlite_error, _}}, esqlite3:q("insert into test_table falues(?1, ?2)", [one, 2], Db)),
-
-  ok.
