@@ -1,0 +1,15 @@
+{application, esqlite,
+ [
+  {description, "sqlite nif interface"},
+  {vsn, "0.4.0"},
+  {modules, [esqlite3, esqlite3_nif]},
+  {registered, []},
+  {licenses, ["Apache"]},
+  {links, [{"Github", "https://github.com/mmzeeman/esqlite"}]},
+  {include_files, ["Makefile"]},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.

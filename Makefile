@@ -1,53 +1,35 @@
-ifeq ($(ERL_EI_INCLUDE_DIR),)
-$(error ERL_EI_INCLUDE_DIR not set. Invoke via mix)
-endif
+PROJECT = esqlite
+DIALYZER = dialyzer
 
-ifeq ($(ERL_EI_LIBDIR),)
-$(error ERL_EI_LIBDIR not set. Invoke via mix)
-endif
+REBAR3 := $(shell which rebar3 2>/dev/null || echo ./rebar3)
+REBAR3_VERSION := 3.10.0
+REBAR3_URL := https://github.com/erlang/rebar3/releases/download/$(REBAR3_VERSION)/rebar3
 
+all: compile
 
-# Set Erlang-specific compile and linker flags
-ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
-ERL_LDFLAGS ?= -L$(ERL_EI_LIBDIR) -lei
+./rebar3:
+	wget $(REBAR3_URL)
+	chmod +x ./rebar3
 
-SRC = $(wildcard c_src/*.c)
+compile: rebar3
+	$(REBAR3) compile
 
-LDFLAGS ?= -fPIC -shared -pedantic
+test: compile
+	$(REBAR3) eunit
 
-CFLAGS ?= -fPIC -O2
-SQLITE_CFLAGS = -DSQLITE_THREADSAFE=1 -DSQLITE_USE_URI -DSQLITE_ENABLE_FTS3 \
--DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_JSON1 \
--DSQLITE_ENABLE_RTREE
+clean: rebar3
+	$(REBAR3) clean
 
-# ESQLITE_USE_SYSTEM - Use the system sqlite3 library
-#   Set this ENV var to compile/link against the system sqlite3 library.
-#   This is necessary if other applications are accessing the same sqlite db
-#   as the versions must match exactly
+distclean:
+	rm $(REBAR3)
 
-ifdef ESQLITE_USE_SYSTEM
-	CFLAGS += -fPIC
-	LDFLAGS += -fPIC -shared -pedantic -lsqlite3
-else
-	SRC += $(wildcard c_src/sqlite3/*.c)
-	CFLAGS += $(SQLITE_CFLAGS) -fPIC -Ic_src/sqlite3
-endif
+# dializer
 
-OBJ = $(SRC:.c=.o)
+build-plt:
+	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt \
+		--apps kernel stdlib
 
-NIF=priv/esqlite3_nif.so
+dialyze:
+	@$(DIALYZER) --src src --plt .$(PROJECT).plt --no_native \
+		-Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
 
-all: priv $(NIF)
-
-priv:
-	mkdir -p priv
-
-%.o: %.c
-	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
-
-$(NIF): $(OBJ)
-	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
-
-clean:
-	$(RM) $(NIF)
-	$(RM) $(OBJ)
