@@ -13,6 +13,7 @@ ifeq ($(ERL_EI_LIBDIR),)
 $(error ERL_EI_LIBDIR not set. Invoke via mix)
 endif
 
+all: compile
 
 # Set Erlang-specific compile and linker flags
 ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
