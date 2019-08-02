@@ -76,7 +76,7 @@ clean:
 	$(RM) $(OBJ)
 
 ./rebar3:
-	wget $(REBAR3_URL)
+	/usr/bin/wget $(REBAR3_URL)
 	chmod +x ./rebar3
 
 compile: rebar3
