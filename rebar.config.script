@@ -1,8 +1,9 @@
 
 NifSharedSources = ["c_src/esqlite3_nif.c", "c_src/queue.c"].
 NifStaticSources = NifSharedSources ++ ["c_src/sqlite3/sqlite3.c"].
-CFlagsDefault = "$CFLAGS -DSQLITE_THREADSAFE=1 -DSQLITE_USE_URI -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_FTS3_PARENTHESIS".
+CFlagsDefault = "$CFLAGS -DSQLITE_USE_URI -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_THREADSAFE=1 -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=3 -DSQLITE_OMIT_DEPRECATED=1 -DSQLITE_OMIT_SHARED_CACHE=1 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_DISABLE_FTS3 -DSQLITE_ENABLE_LOCKING_STYLE=POSIX -DSQLITE_LIKE_DOESNT_MATCH_BLOBS -DSQLITE_ENABLE_UNLOCK_NOTIFY=1 -DSQLITE_USE_URI -DSQLITE_TEMP_STORE=2 -DUSE_PREAD".
 DrvLdFlagsDefault = "-shared -lsqlite3".
+
 
 DrvLdFlags =
     case os:getenv("ESQLITE_CFLAGS") of
@@ -30,10 +31,10 @@ CFlags =
             "-flat_namespace -undefined suppress $ERL_LDFLAGS"},
 
         {"solaris", "CFLAGS",
-            "-std=c99"},
+            "$CFLAGS -std=c99"},
 
         {"linux", "CFLAGS",
-            "-std=c11"},
+            "$CFLAGS -std=c11"},
 
         {"CFLAGS", CFlags}
     ] ++ LdEnv},
